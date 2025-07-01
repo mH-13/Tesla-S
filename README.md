@@ -193,8 +193,3 @@ python -m src.features.build_features \
 
    * Automate rolling retrain & forecast
    * Simulate trading strategy (Sharpe, drawdown)
-
----
-
-```
-```
