@@ -1,6 +1,6 @@
 # Tesla‑S: Tesla Stock Price Forecasting
 
-## 📖 Project Overview
+## Project Overview
 This repository implements a full pipeline to forecast month‑ahead closing prices (or returns) for Tesla (TSLA) stock. It covers:
 
 1. **Data Ingestion & Cleaning**  
@@ -41,7 +41,7 @@ Tesla‑S/
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 1. **Clone the repo**  
 ```bash
@@ -68,7 +68,7 @@ Tesla‑S/
 
 
 
-## 🧹 1. Data Ingestion & Cleaning
+## 1. Data Ingestion & Cleaning
 
 * **Script**: `src/data/make_dataset.py`
 * **Actions**:
@@ -112,7 +112,7 @@ python -m src.features.build_features \
 
 
 
-## 🔍 3. Exploratory Data Analysis (EDA)
+## 3. Exploratory Data Analysis (EDA)
 
 * **Notebook**: `notebooks/01_eda.ipynb`
 * **Key Plots & Insights**:
@@ -170,7 +170,7 @@ python -m src.features.build_features \
 
 
 
-## 🚀 Next Steps
+## Next Steps
 
 1. **Hyperparameter Tuning**
 
