@@ -1,195 +1,214 @@
-# Tesla‑S: Tesla Stock Price Forecasting
+# Tesla Stock Forecasting Project
+
+A complete end‑to‑end pipeline for forecasting Tesla (TSLA) monthly returns using a variety of machine learning, statistical, and deep learning models. This README guides you through setup, data ingestion, feature engineering, exploratory analysis, model training, evaluation, ensembling, and next‑steps.
+
+---
+
+## Table of Contents
+
+- [Tesla Stock Forecasting Project](#tesla-stock-forecasting-project)
+  - [Table of Contents](#table-of-contents)
+  - [Project Overview](#project-overview)
+  - [Directory Structure](#directory-structure)
+  - [Prerequisites \& Installation](#prerequisites--installation)
+  - [Data Pipeline](#data-pipeline)
+    - [1. Data Ingestion](#1-data-ingestion)
+    - [2. Feature Engineering](#2-feature-engineering)
+  - [Exploratory Data Analysis](#exploratory-data-analysis)
+  - [Modeling \& Evaluation](#modeling--evaluation)
+    - [Baselines](#baselines)
+    - [Cross‑Validation \& Walk‑Forward](#crossvalidation--walkforward)
+    - [SARIMA](#sarima)
+    - [LSTM](#lstm)
+    - [Hyperparameter Tuning (XGBoost)](#hyperparameter-tuning-xgboost)
+    - [Regime Flag \& Stacking Ensemble](#regime-flag--stacking-ensemble)
+    - [Metrics \& Awards](#metrics--awards)
+  - [Results Summary](#results-summary)
+  - [Visualization Highlights](#visualization-highlights)
+  - [Further Experiment(Optional)](#further-experimentoptional)
+
+---
 
 ## Project Overview
-This repository implements a full pipeline to forecast month‑ahead closing prices (or returns) for Tesla (TSLA) stock. It covers:
 
-1. **Data Ingestion & Cleaning**  
-2. **Feature Engineering**  
-3. **Exploratory Data Analysis (EDA)**  
-4. **Baseline & Advanced Modeling**  
-5. **Evaluation & Visualization**
+We aim to forecast Tesla’s 21‑day forward return using historical price and volume data. The pipeline:
 
-Along the way you’ll see how each step is motivated by our data insights and forecasting goals.
+1. **Ingests and cleans** raw CSV data
+2. **Engineers features** (returns, moving averages, volatility, RSI, calendar)
+3. **Performs EDA** to understand distributions and relationships
+4. **Trains multiple models**: Naïve, Linear Regression, Random Forest, XGBoost, SARIMA, LSTM
+5. **Hyperparameter tunes** XGBoost via randomized search
+6. **Adds regime detection** (pre‑/post‑2020 structural shift)
+7. **Stacks** XGBoost, LSTM, and SARIMA with a Ridge meta‑learner
+8. **Evaluates** via MAE, RMSE, R², Directional Accuracy
+9. **Visualizes** performance and awards the best models
 
 ---
 
-## 📂 Directory Structure
-```
+## Directory Structure
 
-Tesla‑S/
+```text
+tesla-forecast/
 ├── data/
-│   ├── raw/              # Original TSLA.csv (Kaggle download)
-│   └── processed/        # Cleaned & feature‑engineered CSVs
-│       ├── tsla\_cleaned.csv
-│       └── tsla\_features.csv
+│   ├── raw/                   # Original TSLA.csv
+│   └── processed/             # Cleaned and feature CSVs
+│       ├── tsla_cleaned.csv
+│       └── tsla_features.csv
 ├── notebooks/
-│   ├── 01\_eda.ipynb      # Visual data exploration
-│   └── 02\_modeling\_and\_evaluation.ipynb
-│                          # Baselines, tree‑models, SARIMA, LSTM
+│   ├── 01_eda.ipynb           # Exploratory Data Analysis
+│   └── 02_modeling_and_evaluation.ipynb
+│       └── Sections:
+│           • Environment Setup
+│           • Data Load & Target
+│           • Baselines & CV
+│           • SARIMA, LSTM
+│           • Hyperparameter Tuning
+│           • Regime & Stacking
+│           • Awards & Visuals
 ├── src/
 │   ├── data/
-│   │   └── make\_dataset.py        # Ingest & clean raw CSV
-│   ├── features/
-│   │   └── build\_features.py      # Compute returns, MAs, RSI, volatility, etc.
-│   └── models/
-│       └── baseline.py            # Naïve & LinearRegression baselines
-├── tests/                # (Future) unit tests for each module
-├── requirements.txt      # Pinned Python dependencies
-└── README.md             # This file
-
+│   │   └── make_dataset.py    # Ingest & clean raw CSV
+│   └── features/
+│       └── build_features.py  # Compute engineered features
+├── models/                    # (Optional) saved model pickles
+├── requirements.txt           # Python dependencies
+└── README.md                  # This file
 ```
 
 ---
 
-## Setup Instructions
+## Prerequisites & Installation
 
-1. **Clone the repo**  
-```bash
-   git clone <https://github.com/mH-13/Tesla-S>
-   cd Tesla‑S
-```
+1. **Clone the repo**
 
-2. **Create & activate** a virtual environment
+   ```bash
+   git clone https://github.com/mH-13/Tesla-S
+   cd Tesla-S
+   ```
 
-```bash
-   python3 -m venv venv
+2. **Create and activate a virtual environment**
+
+   ```bash
+   python3.11 -m venv venv
    source venv/bin/activate
-```
+   ```
 
 3. **Install dependencies**
 
-```bash
+   ```bash
    pip install -r requirements.txt
-```
-
-4. **Download** the Tesla CSV (e.g. from Kaggle) and place as `data/raw/TSLA.csv`.
+   ```
 
 ---
 
+## Data Pipeline
 
+### 1. Data Ingestion
 
-## 1. Data Ingestion & Cleaning
-
-* **Script**: `src/data/make_dataset.py`
-* **Actions**:
-
-  1. Load raw CSV with `pd.read_csv()`
-  2. Parse dates, drop invalid/missing rows
-  3. Sort by date, drop duplicates
-  4. Drop rows with any missing OHLCV
-  5. Set `Date` as index
-* **Output**: `data/processed/tsla_cleaned.csv`
+Clean raw TSLA CSV, parse dates, drop duplicates & missing values, and index by `Date`.
 
 ```bash
 python -m src.data.make_dataset \
-    --input_path data/raw/TSLA.csv \
-    --output_path data/processed/tsla_cleaned.csv
+  --input_path data/raw/TSLA.csv \
+  --output_path data/processed/tsla_cleaned.csv
 ```
 
----
+### 2. Feature Engineering
 
-## ⚙️ 2. Feature Engineering
-
-* **Script**: `src/features/build_features.py`
-* **Features Created**:
-
-  * Lagged returns: 1, 5, 21 days
-  * Moving averages: 5, 10, 20 days
-  * Volatility (10‑day rolling std of returns)
-  * RSI (14‑day)
-  * Volume features: 20‑day rolling average & ratio
-  * Calendar: day‑of‑week, month, quarter
-* **Cleaning**: Drop any rows with NaNs from rolling calculations
-* **Output**: `data/processed/tsla_features.csv`
+Compute lagged returns, moving averages, volatility, RSI, volume ratios, and calendar features.
 
 ```bash
 python -m src.features.build_features \
-    --input_path data/processed/tsla_cleaned.csv \
-    --output_path data/processed/tsla_features.csv
+  --input_path data/processed/tsla_cleaned.csv \
+  --output_path data/processed/tsla_features.csv
 ```
 
 ---
 
+## Exploratory Data Analysis
 
+Open and run `notebooks/01_eda.ipynb` to:
 
-## 3. Exploratory Data Analysis (EDA)
-
-* **Notebook**: `notebooks/01_eda.ipynb`
-* **Key Plots & Insights**:
-
-  * **Price & MA**: trend smoothing, bull/bear phases
-  * **Returns Distribution**: fat tails, outliers ±20%
-  * **Volatility Over Time**: spikes during crises
-  * **Correlation Heatmap**: high collinearity among price/MA, stronger 21‑day return ↔ RSI
-  * **Volume vs Returns**: spikes align with extreme moves
-  * **Seasonal Decomposition**: monthly seasonality & heteroskedasticity
-* **Decision Framework**:
-
-  * Drop redundant features for linear models
-  * Frame target as 21‑day return
-  * Use robust metrics (MAE) and direction accuracy
+* View summary statistics
+* Plot time series of Close price and moving averages
+* Visualize return distributions and fat tails
+* Correlation heatmap of features
+* Rolling volatility and seasonal decomposition
 
 ---
 
+## Modeling & Evaluation
 
+Open and run `notebooks/02_modeling_and_evaluation.ipynb` which covers:
 
-## 📊 4. Modeling & Evaluation
+### Baselines
 
-* **Notebook**: `notebooks/02_modeling_and_evaluation.ipynb`
+* **Naïve**: last 21‑day return
+* **Linear Regression**, **Random Forest**, **XGBoost** on a core feature subset
 
-* **Models Trained**:
+### Cross‑Validation & Walk‑Forward
 
-  1. **Naïve**: predict next‑month = last‑month (`return_21`)
-  2. **Linear Regression** on selected features
-  3. **Random Forest**
-  4. **XGBoost** (single split + walk‑forward validation)
-  5. **SARIMA** (seasonal ARIMA on monthly series)
-  6. **LSTM** (30‑day sliding window)
+* Chronological 80/20 split
+* `TimeSeriesSplit` for robust walk‑forward validation
 
-* **Evaluation Metrics**:
+### SARIMA
 
-  * **MAE**: mean absolute error (robust to outliers)
-  * **RMSE**: root mean squared error (penalizes large misses)
-  * **MAPE**: mean absolute percentage error (caution near zero returns)
-  * **R²**: variance explained (negative indicates worse than mean)
-  * **Directional Accuracy**: % correct sign predictions
+* Seasonal ARIMA(1,1,1)(1,1,1,12) on monthly returns
+* Index alignment fix to avoid label mismatch errors
 
-* **Consolidated Results**:
+### LSTM
 
-  | Model            | MAE    | RMSE   | MAPE   | R²      | DirAcc |
-  | ---------------- | ------ | ------ | ------ | ------- | ------ |
-  | Naïve            | 0.2526 | 0.3336 | 4.4813 | –1.3289 | 45.6%  |
-  | LinearRegression | 0.1746 | 0.2240 | 1.9051 | –0.0505 | 52.6%  |
-  | RandomForest     | 0.1807 | 0.2360 | 1.7758 | –0.1654 | 51.0%  |
-  | XGBoost          | 0.1826 | 0.2335 | 1.9335 | –0.1411 | 48.1%  |
-  | XGBoost\_WFV     | 0.1647 | 0.2078 | 2.2557 | –0.4223 | 51.3%  |
-  | SARIMA           | 0.1906 | 0.2315 | 1.7558 | –0.3793 | 40.0%  |
-  | LSTM             | 0.1766 | 0.2429 | 1.3192 | –0.2420 | 47.6%  |
+* 30‑day sliding windows of key features
+* Single‑layer LSTM → Dense(1)
+
+### Hyperparameter Tuning (XGBoost)
+
+* `RandomizedSearchCV` over depth, learning rate, subsample, n\_estimators
+* Best MAE→0.14, RMSE→0.18, R²→0.31, DirAcc→0.63
+
+### Regime Flag & Stacking Ensemble
+
+* **Regime**: binary indicator (pre‑2020 vs post‑2020)
+* **Stack**: Tuned XGBoost, LSTM, SARIMA meta‑features → Ridge meta‑learner
+* Highest directional accuracy (0.66) with MAE/RMSE near best
+
+### Metrics & Awards
+
+* Compiled into a DataFrame with MAE, RMSE, R², Directional Accuracy
+* Automated “🏆”, “🏅”, “⭐” awards for best MAE, DirAcc, R²
 
 ---
 
+## Results Summary
 
+| Model             | MAE    | RMSE   | R²      | DirAcc | Award               |
+| ----------------- | ------ | ------ | ------- | ------ | ------------------- |
+| Naïve             | 0.2526 | 0.3336 | –1.3289 | 0.4564 |                     |
+| Linear Regression | 0.1746 | 0.2240 | –0.0505 | 0.5257 |                     |
+| Random Forest     | 0.1787 | 0.2300 | –0.1074 | 0.5034 |                     |
+| XGBoost           | 0.1886 | 0.2407 | –0.2127 | 0.5034 |                     |
+| LSTM              | 0.2040 | 0.2801 | –0.6518 | 0.4694 |                     |
+| XGB Tuned         | 0.1403 | 0.1810 | 0.3141  | 0.6331 | ⭐ Best R²           |
+| XGB Walk‑Forward  | 0.0991 | 0.1258 | –0.5371 | 0.5296 | 🏆 Best MAE         |
+| SARIMA            | 0.2139 | 0.2471 | –0.5453 | 0.3636 |                     |
+| Stack Ensemble    | 0.1101 | 0.1408 | 0.3055  | 0.6555 | 🏅 Best Directional |
 
-## Next Steps
+---
 
-1. **Hyperparameter Tuning**
+## Visualization Highlights
 
-   * Tree‑models (XGBoost, RF) with `TimeSeriesSplit`
-   * Regularized linear models (Ridge, Lasso)
-   * SARIMAX order search (AIC/BIC)
-   * LSTM architecture & training tweaks
+* **MAE vs Directional Accuracy Scatter**
+* **Bar charts** for MAE/RMSE comparison
+* **Dual‑axis plots** for R² vs DirAcc
 
-2. **Advanced Features**
+Run the final cells in `02_modeling_and_evaluation.ipynb` to generate these visuals.
 
-   * Regime flags (high vs low volatility)
-   * Exogenous data (VIX, S\&P 500, sentiment)
-   * Additional technical indicators (MACD, Bollinger Bands)
+---
 
-3. **Ensembling & Stacking**
+## Further Experiment(Optional)
 
-   * Blend best models via simple averaging or meta‑learners
-
-4. **Walk‑Forward Backtest & Deployment**
-
-   * Automate rolling retrain & forecast
-   * Simulate trading strategy (Sharpe, drawdown)
+1. **Transformer Models**: e.g. Autoformer or Informer for long‑range dependencies
+2. **Advanced Ensembling**: Bayesian model averaging or multi‑layer stacking
+3. **Feature Enrichment**: sentiment data, macro indicators, alternative sources
+4. **Probabilistic Forecasting**: quantile regression or deep ensembles
+5. **CI/CD & Testing**: add `pytest` tests to lock in key metric thresholds
