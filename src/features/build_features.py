@@ -156,3 +156,11 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=str, required=True, help="Where to save features CSV")
     args = parser.parse_args()
     main(args)
+
+
+"""python -m src.features.build_features \
+    --input_path data/processed/tsla_cleaned.csv \
+    --output_path data/processed/tsla_features.csv
+
+
+head -n 5 data/processed/tsla_features.csv"""

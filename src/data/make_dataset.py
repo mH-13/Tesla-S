@@ -121,3 +121,17 @@ if __name__ == "__main__":
     main(args)
 
 
+"""to run this script, use:
+python -m src.data.make_dataset \
+    --input_path ../../data/raw/TSLA.csv \
+    --output_path ../../data/processed/tsla_cleaned.csv
+    
+    python -m src.data.make_dataset \
+    --input_path data/raw/Tasla_Stock_Updated_V2.csv \
+    --output_path data/processed/tsla_cleaned.csv
+
+    head -n 5 data/processed/tsla_cleaned.csv
+"""
+# Note: Adjust paths as necessary based on your project structure.
+# This script assumes the raw data is in a specific format with columns:
+# 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'.
