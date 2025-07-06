@@ -1,11 +1,8 @@
-"""
-baseline.py
+"""Compute baseline forecasts for Tesla 21 day returns:
+    1) Naïve (last month return)
+    2) Linear Regression on selected features
 
-Compute baseline forecasts for Tesla 21 day returns:
-  1) Naïve (last month return)
-  2) Linear Regression on selected features
-
-Usage:
+Run:
     python -m src.models.baseline \
         --input_path ../../data/processed/tsla_features.csv \
         --train_fraction 0.8
@@ -26,8 +23,8 @@ def load_data(path: str) -> pd.DataFrame:
 
 
 def build_target(df: pd.DataFrame, horizon: int = 21) -> pd.DataFrame:
-    """
-    Create forward return target:  (Close_{t+horizon}/Close_t - 1).
+    
+    """ Create forward return target:  (Close_{t+horizon}/Close_t - 1).
     Drops the last `horizon` rows (no target).
     """
     df = df.copy()
@@ -47,8 +44,8 @@ def train_test_split_time(df: pd.DataFrame, train_frac: float = 0.8):
 
 
 def naive_predict(train: pd.DataFrame, test: pd.DataFrame) -> pd.Series:
-    """
-    Naïve forecast: predict next‐month return = past 21‐day return.
+    
+    """Naïve forecast: predict next-month return = past 21-day return.
     That is, use the feature 'return_21' computed over the previous month.
     """
     # On test set, we simply copy the feature return_21 as the forecast
@@ -56,8 +53,8 @@ def naive_predict(train: pd.DataFrame, test: pd.DataFrame) -> pd.Series:
 
 
 def linear_regression_predict(train: pd.DataFrame, test: pd.DataFrame, features: list):
-    """
-    Fit a LinearRegression on `features` to predict 'target_ret'.
+    
+    """Fit a LinearRegression on `features` to predict 'target_ret'.
     Returns predictions on the test set.
     """
     X_train = train[features]
@@ -77,32 +74,28 @@ def linear_regression_predict(train: pd.DataFrame, test: pd.DataFrame, features:
 
 
 def evaluate(y_true: pd.Series, y_pred: pd.Series, label: str) -> dict:
-    """Compute MAE and RMSE."""
     mae  = mean_absolute_error(y_true, y_pred)
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     return {'model': label, 'MAE': mae, 'RMSE': rmse}
 
 
 def main(args):
-    # 1) Load and prepare
+    
     df = load_data(args.input_path)
     df = build_target(df, horizon=21)
 
-    # 2) Train/test split
     train, test = train_test_split_time(df, args.train_fraction)
 
-    # 3) Naïve forecast
+    #Naïve forecast
     y_true = test['target_ret']
     y_pred_naive = naive_predict(train, test)
     res_naive = evaluate(y_true, y_pred_naive, 'Naïve')
 
-    # 4) Linear regression forecast
-    #    Choose a small set of informative features:
+    #Linear regression forecast (with a small set of informative features:)
     feat = ['return_1', 'return_5', 'rsi', 'vol_ratio_20', 'month']
     y_pred_lin = linear_regression_predict(train, test, feat)
     res_lin = evaluate(y_true, y_pred_lin, 'LinearRegression')
 
-    # 5) Summarize
     results = pd.DataFrame([res_naive, res_lin]).set_index('model')
     print("\nBaseline Performance on Test Set:")
     print(results.round(5))
@@ -130,26 +123,26 @@ if __name__ == "__main__":
     Usage:
         python -m src.models.baseline --input_path <path_to_features_csv> --train_fraction <fraction>
         python -m src.models.baseline \
-    --input_path data/processed/tsla_features.csv \
-    --train_fraction 0.8
+            --input_path data/processed/tsla_features.csv \
+            --train_fraction 0.8
     
     ###Results:
     Baseline Performance on Test Set:
-                          MAE     RMSE
+                        MAE     RMSE
     model                             
     Naïve             0.25255  0.33357
     LinearRegression  0.17464  0.22404
     
     
-    1. What This Tells Us
-      LinearRegression MAE ↓30% vs Naïve
-      - Going from 0.2526 to 0.1746 means on average your absolute return-error dropped from ~25% to ~17.5%.
-      → Our features (momentum, RSI, volume ratio, seasonality) have real predictive signal.
+    Analyzing Results:
+        LinearRegression MAE ↓30% vs Naïve
+        - Going from 0.2526 to 0.1746 means on average our absolute return-error dropped from ~25% to ~17.5%.
+        → Our features (momentum, RSI, volume ratio, seasonality) have real predictive signal.
 
-      RMSE also improved
-      - From 0.3336 to 0.2240. RMSE penalizes large errors more heavily, so the regression model is also cutting down on the worst misses.
+        RMSE also improved
+        - From 0.3336 to 0.2240. RMSE penalizes large errors more heavily, so the regression model is also cutting down on the worst misses.
 
-      Residual scale still large. Even 0.224 average error on a 21-day return is substantial (i.e. 22% off). That tells us:
-      - This is a hard forecasting problem.
-      - We may need more sophisticated models or additional data (macro, sentiment).
+        Residual scale still large. Even 0.224 average error on a 21-day return is substantial (i.e. 22% off). That tells us:
+        - This is a hard forecasting problem.
+        - We may need more sophisticated models or additional data (macro, sentiment).
 """
