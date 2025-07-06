@@ -1,49 +1,35 @@
-"""
-make_dataset.py
-
-This script ingests raw Tesla stock CSV data, applies basic cleaning
+"""This script ingests raw Tesla stock CSV data, applies basic cleaning
 and preprocessing steps, and writes out a cleaned dataset for modeling.
 
-Usage:
+Run:
     python -m src.data.make_dataset \
-        --input_path ../../data/raw/TSLA.csv \
+        --input_path ../../data/raw/Tasla_Stock_Updated_V2.csv \
         --output_path ../../data/processed/tsla_cleaned.csv
 """
 
 import argparse
 import pandas as pd
 
-
+#Loading raw CSV into a DataFrame via input path.
 def load_raw_data(input_path: str) -> pd.DataFrame:
-    """
-    Load raw CSV into a DataFrame.
-
-    Args:
-        input_path (str): Path to the raw CSV.
-    Returns:
-        pd.DataFrame: Raw data.
-    """
+    
     df = pd.read_csv(input_path)
     print(f"[load_raw_data] Loaded {len(df)} rows from {input_path}")
     return df
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and preprocess the raw DataFrame.
+    """ Cleanin and preprocessing the raw DataFrame.
 
     Steps:
     1. Convert 'Date' column to datetime.
     2. Sort rows by date ascending.
     3. Drop duplicates.
     4. Handle missing values:
-      - If any OHLC or Volume is missing, drop that row.
+        - If any OHLC or Volume is missing, drop that row.
     5. Reset index to Date.
 
-    Args:
-        df (pd.DataFrame): Raw data.
-    Returns:
-        pd.DataFrame: Cleaned data, indexed by datetime.
+    output: pd.DataFrame: Cleaned data, indexed by datetime.
     """
     # 1) Date → datetime
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
@@ -79,13 +65,8 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def save_processed_data(df: pd.DataFrame, output_path: str) -> None:
-    """
-    Write the cleaned DataFrame to a CSV.
+    #Write the cleaned DataFrame to a CSV.
 
-    Args:
-        df (pd.DataFrame): Cleaned data.
-        output_path (str): Where to write the processed CSV.
-    """
     df.to_csv(output_path)
     print(f"[save_processed_data] Written cleaned data to {output_path}")
 
@@ -106,7 +87,7 @@ if __name__ == "__main__":
         description="Ingest and clean Tesla stock data"
     )
     parser.add_argument(
-        "--input_path",
+        "--input_path", #we can also hardcode the path to the raw CSV file.
         type=str,
         required=True,
         help="Path to raw TSLA CSV"
@@ -121,17 +102,6 @@ if __name__ == "__main__":
     main(args)
 
 
-"""to run this script, use:
-python -m src.data.make_dataset \
-    --input_path ../../data/raw/TSLA.csv \
-    --output_path ../../data/processed/tsla_cleaned.csv
-    
-    python -m src.data.make_dataset \
-    --input_path data/raw/Tasla_Stock_Updated_V2.csv \
-    --output_path data/processed/tsla_cleaned.csv
-
+"""show the first 5 rows of the cleaned dataset:
     head -n 5 data/processed/tsla_cleaned.csv
 """
-# Note: Adjust paths as necessary based on your project structure.
-# This script assumes the raw data is in a specific format with columns:
-# 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'.
